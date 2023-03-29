@@ -1,0 +1,16 @@
+kafka:
+  brokers:
+    - "127.0.0.1:9092"
+  master_topics:
+  ticker_topic: "test-master-ticker-topic"
+
+kafka_group:
+  brokers:
+    - "127.0.0.1:9092"
+  topics:
+    - "test-master-group-topic"
+  group: "test_group1"
+  version: "3.2.1"
+  assignor: "range"
+  oldest: true
+  verbose: false

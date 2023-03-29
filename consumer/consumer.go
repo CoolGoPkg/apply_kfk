@@ -1,4 +1,4 @@
-package main
+package consumer
 
 import (
 	"fmt"
@@ -9,10 +9,6 @@ import (
 type partitionRetry struct {
 	topic     string
 	partition int32
-}
-
-type MessageHandler interface {
-	HandleMessage(*sarama.ConsumerMessage) error
 }
 
 type KfkConsumer struct {
@@ -73,10 +69,13 @@ func (self *KfkConsumer) Close() {
 	}
 }
 
+// Start 并发取每个分区的数据, 使用HandlerMessage接口来处理消息，更加通用
 func (self *KfkConsumer) Start(topic string) {
 	self.pcList = make([]sarama.PartitionConsumer, 0)
 	config := sarama.NewConfig()
 	var err error
+
+	config.Version = sarama.V0_10_2_1
 	self.consumer, err = sarama.NewConsumer(self.brokerList, config)
 	if err != nil {
 		fmt.Println("Failed to start Sarama NewConsumer:", err)
@@ -95,17 +94,14 @@ func (self *KfkConsumer) Start(topic string) {
 	}
 }
 
+type DefaultConsumer struct{}
 
-
-type DefaultConsumer struct {}
-
-
-func(dc DefaultConsumer)HandleMessage(msg *sarama.ConsumerMessage)error{
+func (dc DefaultConsumer) HandleMessage(msg *sarama.ConsumerMessage) error {
 	fmt.Printf("Partition:%d Offset:%d Key:%s Value:%s \n", msg.Partition, msg.Offset, msg.Key, msg.Value)
 	return nil
 }
 
-func Consume(){
+func Consume() {
 	consumer, err := sarama.NewConsumer([]string{"127.0.0.1:9092"}, nil)
 	if err != nil {
 		fmt.Printf("fail to start consumer, err:%v\n", err)
