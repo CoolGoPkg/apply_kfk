@@ -21,3 +21,9 @@ func (dfh *DefaultMessageHandler) HandleMessage(msg *sarama.ConsumerMessage) err
 	fmt.Printf("DefaultMessageHandler HandleMessage key: %s , val: %s\n", string(msg.Key), string(msg.Value))
 	return nil
 }
+
+// BinlogHandler
+func binlogHandler(msg *sarama.ConsumerMessage) error {
+	fmt.Printf("BinlogHandler HandleMessage key: %s , val: %s\n", string(msg.Key), string(msg.Value))
+	return nil
+}

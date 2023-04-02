@@ -21,9 +21,9 @@ type KfkConsumerGroup struct {
 	Verbose  bool
 
 	ready       chan bool
-	stopCtx     context.Context
-	stopCancel  context.CancelFunc
-	wg          *sync.WaitGroup
+	StopCtx     context.Context
+	StopCancel  context.CancelFunc
+	Wg          *sync.WaitGroup
 	groupClient sarama.ConsumerGroup
 
 	Handler MessageHandler
@@ -41,9 +41,9 @@ func NewKfkConsumerGroup(conf *conf.KafkaGroupConfig) *KfkConsumerGroup {
 		Oldest:     conf.Oldest,
 		Verbose:    conf.Verbose,
 		ready:      make(chan bool),
-		stopCtx:    ctx,
-		stopCancel: cancel,
-		wg:         wg,
+		StopCtx:    ctx,
+		StopCancel: cancel,
+		Wg:         wg,
 	}
 }
 
@@ -57,8 +57,7 @@ func (cg *KfkConsumerGroup) AddClient(client sarama.ConsumerGroup) {
 	cg.groupClient = client
 }
 
-// Start 启动
-func (cg *KfkConsumerGroup) Start() {
+func (cg *KfkConsumerGroup) PrepareConfig() {
 	log.Println("Starting a new Sarama consumer")
 
 	if cg.Verbose {
@@ -77,8 +76,10 @@ func (cg *KfkConsumerGroup) Start() {
 	 * The Kafka cluster version has to be defined before the consumer/producer is initialized.
 	 */
 	config := sarama.NewConfig()
+	config.Consumer.Return.Errors = false
+	//config.Consumer.Offsets.AutoCommit.Interval = 3*time.Second
+	//config.Consumer.Offsets.AutoCommit.Enable = false
 	config.Version = version
-
 	switch cg.Assignor {
 	// 尝试将分区保持在同一消费者上
 	// Example with topic T with six partitions (0..5) and two members (M1, M2):
@@ -145,20 +146,24 @@ func (cg *KfkConsumerGroup) Start() {
 		return
 	}
 	cg.AddClient(client)
+}
 
-	cg.wg.Add(1)
+// StartASync 异步启动
+func (cg *KfkConsumerGroup) StartASync() {
+	cg.PrepareConfig()
+	cg.Wg.Add(1)
 	go func() {
-		defer cg.wg.Done()
+		defer cg.Wg.Done()
 		for {
 			// `Consume` should be called inside an infinite loop, when a
 			// server-side rebalance happens, the consumer session will need to be
 			// recreated to get the new claims
-			if err := client.Consume(cg.stopCtx, cg.Topics, cg); err != nil {
+			if err := cg.groupClient.Consume(cg.StopCtx, cg.Topics, cg); err != nil {
 				fmt.Println("Error from consumer: ", err)
 			}
 			// check if context was cancelled, signaling that the consumer should stop
-			if cg.stopCtx.Err() != nil {
-				log.Println("ctx error", cg.stopCtx.Err())
+			if cg.StopCtx.Err() != nil {
+				log.Println("ctx error", cg.StopCtx.Err())
 				return
 			}
 			cg.ready = make(chan bool)
@@ -169,10 +174,28 @@ func (cg *KfkConsumerGroup) Start() {
 	fmt.Println("Sarama consumer up and running!...")
 }
 
+// StartSync 同步启动
+func (cg *KfkConsumerGroup) StartSync() {
+	cg.PrepareConfig()
+	for {
+		// `Consume` should be called inside an infinite loop, when a
+		// server-side rebalance happens, the consumer session will need to be
+		// recreated to get the new claims
+		if err := cg.groupClient.Consume(cg.StopCtx, cg.Topics, cg); err != nil {
+			fmt.Println("Error from consumer: ", err)
+		}
+		// check if context was cancelled, signaling that the consumer should stop
+		if cg.StopCtx.Err() != nil {
+			log.Println("ctx error", cg.StopCtx.Err())
+			return
+		}
+	}
+}
+
 // Quit 退出
 func (cg *KfkConsumerGroup) Quit() {
-	cg.stopCancel()
-	cg.wg.Wait()
+	cg.StopCancel()
+	cg.Wg.Wait()
 	err := cg.groupClient.Close()
 	if err != nil {
 		fmt.Println("kfk consumer group Error closing client: ", err)
@@ -195,6 +218,8 @@ func (cg *KfkConsumerGroup) Cleanup(sarama.ConsumerGroupSession) error {
 	return nil
 }
 
+//var consumerCount int
+
 // ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages().
 func (cg *KfkConsumerGroup) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	// NOTE:
@@ -208,6 +233,14 @@ func (cg *KfkConsumerGroup) ConsumeClaim(session sarama.ConsumerGroupSession, cl
 			// 更新Offset
 			session.MarkMessage(message, "")
 
+			//consumerCount++
+			//if consumerCount%3 == 0 { // 假设每消费 3 条数据 commit 一次
+			//	// 手动提交，不能频繁调用
+			//	t1 := time.Now().Nanosecond()
+			//	session.Commit()
+			//	t2 := time.Now().Nanosecond()
+			//	fmt.Println("commit cost:", (t2-t1)/(1000*1000), "ms")
+			//}
 		// Should return when `session.Context()` is done.
 		// If not, will raise `ErrRebalanceInProgress` or `read tcp <ip>:<port>: i/o timeout` when kafka rebalance. see:
 		// https://github.com/Shopify/sarama/issues/1192

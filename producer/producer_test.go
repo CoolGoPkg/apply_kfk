@@ -6,8 +6,7 @@ import (
 )
 
 func TestSendToKfk(t *testing.T) {
-	fmt.Println(13 / 2)
-	a, b, err := SendToKfk("hello my name is Kafka")
+	a, b, err := SendToKfk("hello my name is mark14")
 	if err != nil {
 		fmt.Println("has an error", err)
 		return

@@ -40,7 +40,7 @@ func SendToKfk(data interface{}) (int32, int64, error) {
 	CreatedProducer(nil)
 	body, _ := json.Marshal(data)
 	fmt.Println("Send to kafka:", string(body))
-	msg := &sarama.ProducerMessage{Topic: "test1", Key: nil, Value: sarama.StringEncoder(body)}
+	msg := &sarama.ProducerMessage{Topic: "maxwell", Key: nil, Value: sarama.StringEncoder(body)}
 	return producer.SendMessage(msg)
 }
 

@@ -113,7 +113,24 @@ type KafkaGroupConfig struct {
 	Topics   []string `yaml:"topics"`
 }
 
+// ConfigMysql sets the MySQL
+type ConfigMysql struct {
+	Username       string `yaml:"username"`
+	Password       string `yaml:"password"`
+	Host           string `yaml:"host"`
+	Port           int    `yaml:"port"`
+	DBName         string `yaml:"db_name"`
+	MaxIdle        int    `yaml:"max_idle"`
+	MaxConn        int    `yaml:"max_conn"`
+	LogType        string `yaml:"log_type"`
+	NotPrintSql    bool   `yaml:"not_print_sql"`
+	NotCreateTable bool   `yaml:"not_create_table"`
+	AutoMerge      bool   `yaml:"auto_merge"`
+	Charset        string `yaml:"charset"`
+}
+
 type CustomerConfig struct {
+	LocalMysql     ConfigMysql      `yaml:"local_mysql"`
 	KafkaConf      KafkaConfig      `yaml:"kafka"`
 	KafkaGroupConf KafkaGroupConfig `yaml:"kafka_group"`
 }

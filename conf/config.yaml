@@ -1,3 +1,13 @@
+local_mysql:
+  username: "root"
+  password: "11111111"
+  host: "127.0.0.1"
+  port: 3306
+  db_name: "test1"
+  max_idle: 50
+  max_conn: 100
+  not_print_sql: false
+
 kafka:
   brokers:
     - "127.0.0.1:9092"
@@ -8,9 +18,9 @@ kafka_group:
   brokers:
     - "127.0.0.1:9092"
   topics:
-    - "test-master-group-topic"
-  group: "test_group1"
-  version: "3.2.1"
+    - "maxwell"
+  group: "group1"
+  version: "3.4.0"
   assignor: "range"
-  oldest: true
+  oldest: false
   verbose: false
